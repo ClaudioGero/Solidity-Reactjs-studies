@@ -1,37 +1,56 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import web3 from "web3";
+import detectEthereumProvider from "@metamask/detect-provider";
+
 function App() {
   const [web3Api, setWeb3Api] = useState({ provider: null, web3: null });
+  const [account, setAccount] = useState(null);
   useEffect(() => {
     const loadProvider = async () => {
-      let provider = null;
-      if (window.ethereum) {
-        provider = window.ethereum;
-        try {
-          await provider.enable();
-        } catch {
-          console.error("User denied access");
-        }
-      } else if (window.web3) {
-        provider = window.web3.currentProvider;
-      } else if (!process.env.production) {
-        provider = new web3.providers.HttpProvider("http://localhost:7545");
+      const provider = await detectEthereumProvider();
+      if (provider) {
+        setWeb3Api({ web3: new web3(provider), provider });
+      } else {
+        console.error("please, install Metamask");
       }
-      setWeb3Api({ web3: new web3(provider), provider });
     };
     loadProvider();
   }, []);
+  useEffect(() => {
+    const getAccount = async () => {
+      const accounts = await web3Api.web3.eth.getAccounts();
+      setAccount(accounts[0]);
+    };
+    web3Api.web3 && getAccount();
+  }, [web3Api.web3]);
   return (
     <>
       <div className="faucet-wrapper">
         <div className="faucet">
-          <div className="balance-view is-size-2">
+          <div className="is-flex is-align-items-center">
+            <span>
+              <strong className="mr-2">Account: </strong>
+            </span>
+            {account ? (
+              <div>{account}</div>
+            ) : (
+              <button
+                className="button is-small"
+                onClick={() =>
+                  web3Api.provider.request({ method: "eth_requestAccounts" })
+                }
+              >
+                Connect Wallet
+              </button>
+            )}
+          </div>
+          <div className="balance-view is-size-2 my-5 mt-8">
             Current balance: <strong>10</strong> ETH
           </div>
 
-          <button className="btn mr-2">Donate</button>
-          <button className="btn">Withdraw</button>
+          <button className="button is-primary is-light mr-2">Donate</button>
+          <button className="button is-link is-light">Withdraw</button>
         </div>
       </div>
     </>
